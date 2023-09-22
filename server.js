@@ -1,12 +1,14 @@
-import express from 'express';
-import startServer from './libs/boot';
-import injectRoutes from './routes';
-import injectMiddlewares from './libs/middlewares';
+const express = require('express');
+require('dotenv').config();
+// const bodyParser = require('body-parser');
 
-const server = express();
+const app = express();
+const port = process.env.PORT || 5000;
+const router = require('./routes/index');
+app.use(express.json());
+app.use('/', router);
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+})
 
-injectMiddlewares(server);
-injectRoutes(server);
-startServer(server);
-
-export default server;
+export default app;

@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
 class DBClient {
   constructor() {
@@ -20,6 +20,16 @@ class DBClient {
 
   async nbFiles() {
     return this.client.db().collection('files').countDocuments();
+  }
+
+  async userCollection() {
+    return this.client.db().collection('users');
+  }
+  async fileCollection() {
+    return this.client.db().collection('files');
+  }
+  async findFilesByPid(id) {
+    return await (await this.fileCollection()).findOne({parentId: ObjectId(id)});
   }
 }
 
