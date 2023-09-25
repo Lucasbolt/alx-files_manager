@@ -1,11 +1,12 @@
 require('dotenv').config();
 import dbClient from "../utils/db";
-import { getUserToken,
-         getUserId,
-         } from "../utils/auth";
+import {
+    getUserId,
+} from "../utils/auth";
 const fs = require('fs');
 import FileHandler from "../utils/files";
 import { v4 } from 'uuid';
+import mime from 'mime-types';
 
 export default class FilesController {
     static async postUpload(req, res) {
@@ -187,5 +188,29 @@ export default class FilesController {
         }
         res.status(200).json(result);
         return;
+    }
+
+    static async getFile(req, res) {
+        const userId = await getUserId(req);
+        const fileId = req.params.id;
+        const file = await FileHandler.findFileById(fileId);
+        if (!file.isPublic && userId !== file.userId) {
+            return res.status(404).json({error: 'Not found'});
+        }
+        if(!file) {
+            return res.status(404).json({error: 'Not found'});
+        }
+        if (file.type === 'folder') {
+            return res.status(400).json({error: "A folder doesn't have content"});
+        }
+        const rootDir =  process.env.FOLDER_PATH || '/tmp/files_manager';
+        let filePath = `${rootDir}/${file.localPath}`;
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({error: 'Not found'});
+        }
+        const mimetype = mime.lookup(file.name);
+        res.set('Content-Type', mimetype);
+        const data = fs.readFileSync(filePath);
+        return res.status(200).send(data);
     }
 }

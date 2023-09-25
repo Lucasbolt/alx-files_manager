@@ -74,4 +74,10 @@ export default class FileHandler {
   }
   }
 
+  static async findFileById(id) {
+    if (!ObjectId.isValid(id)) {
+      return null;
+    }
+    return await (await dbClient.fileCollection()).findOne({_id: ObjectId(id)});
+  }
 }
