@@ -4,17 +4,14 @@ import {
     getUserId,
 } from "../utils/auth";
 const fs = require('fs');
+import fileQueue from "../worker";
 import FileHandler from "../utils/files";
 import { v4 } from 'uuid';
 import mime from 'mime-types';
 
+
 export default class FilesController {
     static async postUpload(req, res) {
-        // const token = getUserToken(req);
-        // if (!token) {
-        //     res.status(401).json({error: 'Unauthorized'});
-        //     return;
-        // };
         const userId = await getUserId(req);
         if (!userId) {
             res.status(401).json({error: 'Unauthorized'});
@@ -40,7 +37,7 @@ export default class FilesController {
             return;
         };
         if (parentId !== 0) {
-            const pfile = await dbClient.findFilesByPid(parentId);
+            const pfile = await FileHandler.findFileById(parentId);
             if (!pfile) {
                 res.status(400).json({error: 'Parent not found'});
                 return;
@@ -63,9 +60,9 @@ export default class FilesController {
             const id = fileInsertInfo.insertedId.toString();
             res.status(200).json({ id, ...fileDocument });
         } else {
-            const fileContent = Buffer.from(data, 'base64').toString();
+            const fileContent = Buffer.from(data, 'base64');
             const rfilePath = process.env.FOLDER_PATH || '/tmp/files_manager';
-            const localPath  = v4(name);
+            let localPath  = v4(name);
             const fstatus = await FileHandler.folderManager(rfilePath);
             if (fstatus) {
                 fs.writeFile(`${rfilePath}/${localPath}`, fileContent, (err) => {
@@ -90,15 +87,14 @@ export default class FilesController {
             const fileInsertInfo = await (await dbClient.fileCollection())
             .insertOne(fileDocument);
             const id = fileInsertInfo.insertedId.toString();
+            if (type === 'image') {
+                fileQueue.add({userId: userId, fileId: id});
+            }
             res.status(200).json({ id, ...fileDocument });
         }
     }
 
     static async getshow(req, res) {
-        // const token = getUserToken(req);
-        // if (!token) {
-        //     res.status(401).json({error: 'Unauthorized'});
-        // };
         const userId = await getUserId(req);
         if (!userId) {
             res.status(401).json({error: 'Unauthorized'});
@@ -119,11 +115,6 @@ export default class FilesController {
     }
 
     static async getIndex(req, res) {
-        // const token = getUserToken(req);
-        // if (!token) {
-        //     res.status(401).json({error: 'Unauthorized'});
-        //     return;
-        // };
         const userId = await getUserId(req);
         if (!userId) {
             res.status(401).json({error: 'Unauthorized'});
@@ -193,6 +184,7 @@ export default class FilesController {
     static async getFile(req, res) {
         const userId = await getUserId(req);
         const fileId = req.params.id;
+        const { size } = req.query;
         const file = await FileHandler.findFileById(fileId);
         if (!file.isPublic && userId !== file.userId) {
             return res.status(404).json({error: 'Not found'});
@@ -205,6 +197,10 @@ export default class FilesController {
         }
         const rootDir =  process.env.FOLDER_PATH || '/tmp/files_manager';
         let filePath = `${rootDir}/${file.localPath}`;
+        if (!Number.isNaN(size) && [500, 250, 100].includes(Number(size))) {
+            filePath += `_${size}`;
+        };
+
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({error: 'Not found'});
         }
