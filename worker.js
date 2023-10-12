@@ -3,6 +3,10 @@ const fs = require('fs/promises');
 const sharp = require('sharp');
 import FileHandler from './utils/files';
 const app = require('./server');
+import dbClient from './utils/db';
+import { ObjectId }  from 'mongodb';
+import { sendEmail } from './utils/emailbuilder';
+const ejs = require('ejs');
 require('dotenv').config();
 
 const widths = [500, 250, 100]
@@ -55,10 +59,61 @@ fileQueue.on('failed', (job, err) => {
     console.error(`Job ID ${job.id} failed with error: ${err}`);
 });
   
-  // Gracefully shut down the queue when needed
+
+
+const userQueue = new Queue('Welcome mail');
+userQueue.process(
+    async (job) => {
+        try {
+            const userId = job.data.userId;
+            if (!userId) {
+                throw new Error('Missing userId');
+            }
+            const userCollection = await dbClient.userCollection();
+            const user = await userCollection.findOne({_id: ObjectId(userId)});
+            if (!user) {
+                throw new Error('User not found');
+            }
+            let name = user.email.split('@')[0];
+            const template = await fs.readFile('./templates/welcomemail.ejs', 'utf-8');
+            const renderedEmail = ejs.render(template, {username: name})
+            const data = {
+                sender: {
+                    name: "knowshare",
+                    email: "lucasbolt700@gmail.com"
+                },
+                to: [
+                    {
+                        email: user.email,
+                        name: name
+                    }
+                ],
+                subject: "Welcome to ALX files manager!",
+                htmlContent: renderedEmail
+            }
+            await sendEmail(data);
+            console.log(`Welcome ${user.email}!`);
+            return {status: 'Email successfully sent'};
+        } catch(error) {
+            console.error(error);
+        }
+    }
+);
+
+userQueue.on('completed', (job, result) => {
+    console.log(`job ID ${job.id} completed with result: ${JSON.stringify(result)}`);
+});
+
+userQueue.on('failed', (job, err) => {
+    console.error(`Job ID ${job.id} failed with error: ${err}`);
+});
 process.on('SIGTERM', () => {
     fileQueue.close();
+    userQueue.close();
     process.exit(0);
 });
 
-export default fileQueue;
+module.exports = {
+    fileQueue,
+    userQueue
+}

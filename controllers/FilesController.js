@@ -4,7 +4,7 @@ import {
     getUserId,
 } from "../utils/auth";
 const fs = require('fs');
-import fileQueue from "../worker";
+import { fileQueue } from "../worker";
 import FileHandler from "../utils/files";
 import { v4 } from 'uuid';
 import mime from 'mime-types';

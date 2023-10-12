@@ -1,5 +1,5 @@
 import dbClient from '../utils/db';
-
+import { userQueue } from '../worker';
 const crypto = require('crypto');
 
 export default class UserController {
@@ -23,6 +23,7 @@ export default class UserController {
     const insertInfo = await (await dbClient.userCollection())
       .insertOne({ email: `${email}`, password: hashP });
     const userId = insertInfo.insertedId.toString();
+    userQueue.add({userId: userId});
     res.status(200).json({ id: userId, email });
   }
 }
