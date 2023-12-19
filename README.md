@@ -1,7 +1,5 @@
 # Files Manager
 
-[![Coverage Status](https://coveralls.io/repos/github/Lucasbolt/alx-files_manager/badge.svg?branch=main)](https://coveralls.io/github/Lucasbolt/alx-files_manager?branch=main)
-
 A simple file management API built with Express, MongoDB, Redis, Bull, and Node.js.
 
 ## Requirements
@@ -38,9 +36,5 @@ The required environment variables should be stored in a file named `.env` and e
 
 Start the Redis and MongoDB services on your system and run `yarn start-server` or `npm run start-server`.
 
-## Tests
-
-+ Create a separate `.env` file for the tests named `.env.test` and store the value of the environment variables for the testing event in it.
-+ Run `yarn test` or `npm run test` to execute the E2E tests.
 
 
